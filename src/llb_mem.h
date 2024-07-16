@@ -108,6 +108,7 @@ class LLB_Mem{
 
 		// Add a PE tile(s) to LLB
 		int AddToLLB(char mat_name, Req rd_wr, uint64_t bytes, int update_traffic);
+		int AddToLLB(char mat_name, Req rd_wr, uint64_t bytes, int update_traffic, int dont_add);
 
 		// Just check if we can fit it or not; Do not do any action
 		// 0: no , 1: yes
@@ -118,6 +119,7 @@ class LLB_Mem{
 
 		// Completely erase the tiles corresponding to a matrix from LLB
 		void EvictMatrixFromLLB(char mat_name, int update_traffic);
+		void EvictMatrixFromLLB(char mat_name, int update_traffic, int dont_add);
 
 		// Add data to LLB; This is a minimal version used for no-tiled versions
 		int AddToLLB_Minimal(uint64_t bytes);

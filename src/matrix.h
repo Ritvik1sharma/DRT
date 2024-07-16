@@ -251,6 +251,9 @@ class Matrix{
 		int row_start_log;
 		int col_start_log;
 
+		uint64_t log_sum_size = 0;
+		uint64_t log_size_other = 0;
+
 		// Is matrix B same as matrix A? (A x A or A x B)
 		int aIsEqualToB;
 		// Parameteres/ Statistics/ LLB classes
@@ -349,6 +352,7 @@ class Matrix{
 
 		// Gets a CSR matrix and calculates the CSF size
 		void calculateCSFSize_csr(CSR_format * matrix_csr);
+		uint64_t calculate_and_ret_CSFSize_csr(CSR_format * matrix_csr);
 		void skipModelCyclesCalc(int i, int j, int k, int * cycles_comp);
 		int handleParallelIntersect(CSR_format *a_csr, CSR_format *b_csc,
 				int i_idx, int j_idx);

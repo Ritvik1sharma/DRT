@@ -746,9 +746,17 @@ uint64_t Matrix::getOutputLogNNZCOOSize(){
 
 
 uint64_t Matrix::getOutputLogCSFSize(){
-		uint64_t csf_size = this->params->getIdxSize()*(2 + 2*std::min(o_csr_tiled_log->row_size*this->params->getTileSize(), o_csr_tiled_log->nnz)\
-										 + 1 + o_csr_tiled_log->nnz) + params->getDataSize()*o_csr_tiled_log->nnz;
-			return csf_size;
+	// std::cout << "\t\t\t\t\t\t\t\toutput log size getter " << this->params->getIdxSize()*\
+	// 	(2 + 2*std::min(o_csr_tiled_log->row_size*this->params->getTileSize(), o_csr_tiled_log->nnz) + 1 + o_csr_tiled_log->nnz) << std::endl;
+	// std::cout << "\t\t\t\t\t\t\t\toutput nnz " << o_csr_tiled_log->nnz << " " << o_csr_tiled_log->row_size*this->params->getTileSize() << std::endl;
+	uint64_t csf_size = this->params->getIdxSize()*(2 + 2*std::min(o_csr_tiled_log->row_size*this->params->getTileSize(), o_csr_tiled_log->nnz)\
+										+ 1 + o_csr_tiled_log->nnz) + params->getDataSize()*o_csr_tiled_log->nnz;
+	uint64_t coo_size = this->params->getIdxSize()*(2*o_csr_tiled_log->nnz) + params->getDataSize()*o_csr_tiled_log->nnz;
+	uint64_t log_sum = this->log_sum_size - this->log_size_other;
+	// std::cout << o_csr_tiled_log->nnz << " " << coo_size << " " <<  this->log_sum_size << ":" << this->log_size_other << " " << csf_size << std::endl;
+	this->log_sum_size = 0;
+	this->log_size_other = 0;
+	return std::min(std::min(coo_size, csf_size), log_sum);
 }
 
 // Returns the NNZ count of the ouput log matrix
@@ -1581,6 +1589,30 @@ void Matrix::calculateCSFSize_csr(CSR_format * matrix_csr){
 	return;
 }
 
+
+// Gets a CSR matrix and calculates the CSF size
+uint64_t Matrix::calculate_and_ret_CSFSize_csr(CSR_format * matrix_csr){
+
+	// nnr: number of non-zero rows
+	int nnr = 0;
+	int temp;
+	// CSF size calculation
+	// If it has no nnz, size is zero
+	if(matrix_csr->nnz){
+		// Find the number of nnr
+		for (int i = 1; i<=matrix_csr->row_size; i++){
+			if (matrix_csr->pos[i] > matrix_csr->pos[i-1]) nnr++;
+		}
+		int nnz = matrix_csr->nnz;
+
+		temp = params->getPosSize() * (3 + nnr) +
+				params->getIdxSize() * (nnr + nnz) +
+				params->getDataSize() * (nnz);
+	}
+	return temp;
+}
+
+
 // Gets a CSR matrix and calculates the CSR size
 void Matrix::calculateCSRSize_csr(CSR_format * matrix_csr){
 	// CSR size calculation
@@ -1871,6 +1903,11 @@ void Matrix::CSRTimesCSR(int i, int j, int k, int * cycles_comp, uint32_t & ppro
 	int nnz_log_tile_pre = o_log_csr->nnz;
 	int nnz_log_tile_post = nnz_log_tile_pre;
 
+	// std::cout << "\t\t\t\t\t\t  ret CSF " << calculate_and_ret_CSFSize_csr(o_csr) << std::endl;
+	this->log_size_other += calculate_and_ret_CSFSize_csr(o_log_csr);
+	// std::cout << "\t\t\t\t\t\t log ret CSF " << calculate_and_ret_CSFSize_csr(o_log_csr) << " " << this->log_size_other  << std::endl;
+	// int size_curr_ocsr = o_csr;
+
 	// if either of them is all zero then just skip; there is no computation to do
 	if ((a_csr->nnz == 0) | (b_csr->nnz == 0))
 		return;
@@ -2108,6 +2145,9 @@ void Matrix::CSRTimesCSR(int i, int j, int k, int * cycles_comp, uint32_t & ppro
 	calculateCSRSize_csr(o_csr);
 	// Update basic tile of output log size
 	calculateCOOSize_csr(o_log_csr);
+
+	this->log_sum_size += calculate_and_ret_CSFSize_csr(o_log_csr);
+	// std::cout << "\t\t\t\t\t\t calculate log ret CSF " << calculate_and_ret_CSFSize_csr(o_log_csr) << std::endl;
 	// #Non-zero after computation
 	nnz_log_tile_post = o_log_csr->nnz;
 	// Update total #non-zeros in the output log matrix

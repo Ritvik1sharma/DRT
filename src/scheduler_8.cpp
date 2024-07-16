@@ -12,6 +12,7 @@
  *	Bottom Lebel: Extract (Scanners), Intersection unit
  */
 
+uint64_t total_bw_breakdown[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 // constructor -> intializer of the scheduler
 Scheduler_8::Scheduler_8(Matrix * mtx, Parameters * params, Stats * stats, LLB_Mem * llb){
@@ -24,7 +25,7 @@ Scheduler_8::Scheduler_8(Matrix * mtx, Parameters * params, Stats * stats, LLB_M
 	o_tiled_rows = matrix->getTiledORowSize();
 	o_tiled_cols = matrix->getTiledOColSize();
 	b_tiled_rows = matrix->getTiledBRowSize();
-
+	// std::cout << "tile dims are " << o_tiled_rows << " " << o_tiled_cols << " " << b_tiled_rows << std::endl;
 	// #Bytes that can be transferred every cycle
 	top_bytes_per_ns = (float)params->getTopBandwidth() / params->getFrequency();
 	middle_bytes_per_ns = (float)params->getMiddleBandwidth() / params->getFrequency();
@@ -92,7 +93,8 @@ Scheduler_8::Scheduler_8(Matrix * mtx, Parameters * params, Stats * stats, LLB_M
 	// Used only for the round-robin scheduler
 	round_robin_slot = 0;
 	// DEBUGGING variables. DON'T REMOVE
-	a_traffic = 0; b_traffic = 0; o_traffic_read = 0; o_traffic_write = 0; total_traffic = 0;
+	a_traffic = 0; b_traffic = 0; o_traffic_read = 0; o_traffic_write = 0; total_traffic = 0; total_traffic_track = 0;
+	// a_traffic = 0; b_traffic = 0; o_traffic_read = 0; o_traffic_write = 0; total_traffic = 0;
 	a_bwl_traffic =0; b_bwl_traffic = 0; o_bwl_traffic_read = 0; o_bwl_traffic_write = 0;
 
 	pe_utilization_logger = new uint64_t[params->getPECount()];
@@ -185,7 +187,7 @@ int Scheduler_8::Run(){
 	// Iterations over B cols / O cols / a_reuse
 	int k_end_top = 0;
 	for(int k_start_top = 0; k_start_top < o_tiled_cols; /* EMPTY */){
-        printf("Debug: top k %d of %d\n", k_start_top, o_tiled_cols); fflush(stdout);
+        	printf("Debug: top k %d of %d\n", k_start_top, o_tiled_cols); fflush(stdout);
 		// Range for the a_reuse = [j_idx_start, j_idx_stop)
 		int j_start_top = 0, j_end_top  = 0;
 
@@ -194,7 +196,10 @@ int Scheduler_8::Run(){
 		while(j_start_top < b_tiled_rows){
 			// Calculate O_reuse and fetch B tiles
 			//  Calculate B_extract top level overhead as well
+			uint64_t starting_b = total_bw_breakdown[LVL1_IN_PRE_B];
 			ExtractBTopTile(k_start_top, j_start_top);
+			uint64_t ending_b = total_bw_breakdown[LVL1_IN_PRE_B];
+			// ExtractBTopTile(k_start_top, j_start_top);
 			// Load the latest updated a_reuse (it might be bigger than user defined)
 			a_reuse = params->getAReuse();
 			k_end_top = std::min(k_start_top+a_reuse, o_tiled_cols);
@@ -210,17 +215,20 @@ int Scheduler_8::Run(){
 			// iteration over A rows / O rows
 			//   there is no i_idx++ since it goes as far as LLB assists
 			int i_end_top = 0;
+			// int count_print = 0;
 			for(int i_start_top = 0; i_start_top < o_tiled_rows;/* EMPTY */){
 
 				// j_end_top and k end_top are already calculated,
 				//	now need to figure out i_end
-				ExtractATopTile(i_start_top, i_end_top, j_start_top, j_end_top, k_start_top, k_end_top);
+				ExtractATopTile(i_start_top, i_end_top, j_start_top, j_end_top, k_start_top, k_end_top, ending_b-starting_b);
+				// ExtractATopTile(i_start_top, i_end_top, j_start_top, j_end_top, k_start_top, k_end_top);
 
 				// Fetch A basic tiles! in basic tile build of tile extraction
 				EarlyFetchABasicTiles(i_start_top, i_end_top, j_start_top, j_end_top);
 
 				// Schedule the multiplication of basic tiles of an A top tile (LLB)
 				//	by basic tiles of a top tile of B
+
 				ScheduleMiddleDOT(i_start_top, i_end_top,
 						j_start_top, j_end_top, k_start_top, k_end_top);
 
@@ -274,8 +282,11 @@ int Scheduler_8::Run(){
 
 		uint64_t starting_cycle = *std::min_element(pe_time, pe_time + params->getPECount());
 		uint64_t ending_cycle = *std::max_element(pe_time, pe_time + params->getPECount());
+		
 		uint64_t endingCycle_memory = updateBWLog(starting_cycle,
-				topLevel_output_bw,	top_bw_logger, top_bytes_per_ns);
+				topLevel_output_bw,	top_bw_logger, top_bytes_per_ns, LVL1_OUT, true);
+		// uint64_t endingCycle_memory = updateBWLog(starting_cycle,
+		// 		topLevel_output_bw,	top_bw_logger, top_bytes_per_ns);
 
 		stats->Set_cycles(std::max(ending_cycle, endingCycle_memory));
 		stats->Set_runtime((double)stats->Get_cycles()/params->getFrequency());
@@ -497,13 +508,19 @@ void Scheduler_8::ScheduleMiddleDOT(int i_start_top, int i_end_top,
 						uint64_t * chosen_pe = std::min_element(pe_time, pe_time+params->getPECount());
 						// The starting time should be batch_starting_cycle because
 						//  pre-fetching can happen
+
+						
 						uint64_t endingCycle_top = updateBWLog(batch_starting_cycle,
-								top_traffic, top_bw_logger, top_bytes_per_ns);
-						// For the middle DOT we should start when computation takes place
+								top_traffic, top_bw_logger, top_bytes_per_ns, LVL1_IN_MID, true);
+						// uint64_t endingCycle_top = updateBWLog(batch_starting_cycle,
+						// 		top_traffic, top_bw_logger, top_bytes_per_ns);
+						// // For the middle DOT we should start when computation takes place
 						uint64_t endingCycle_middle =0;
 						if(params->doesMiddleDOTTrafficCount() == middleDOTTrafficStatus::yes){
 							endingCycle_middle = updateBWLog(*chosen_pe,
-								middle_traffic, middle_bw_logger, middle_bytes_per_ns);
+								middle_traffic, middle_bw_logger, middle_bytes_per_ns, LVL2_IN, true);
+							// endingCycle_middle = updateBWLog(*chosen_pe,
+							// 	middle_traffic, middle_bw_logger, middle_bytes_per_ns);
 						}
 						*chosen_pe = std::max( std::max(endingCycle_top, endingCycle_middle)
 									,*chosen_pe + (uint64_t) cycles_comp);
@@ -511,7 +528,7 @@ void Scheduler_8::ScheduleMiddleDOT(int i_start_top, int i_end_top,
 						// Take into account prematurely writing back the output log
 						if(LogWriteBackSize_ct){
 							endingCycle_top = updateBWLog(*chosen_pe,
-								LogWriteBackSize_ct, top_bw_logger, top_bytes_per_ns);
+								LogWriteBackSize_ct, top_bw_logger, top_bytes_per_ns, LVL1_OUT_MID, true);
 						}
 						uint64_t max_time_accessed_in_batch = std::max(max_time_accessed_in_batch,
 								std::max(*chosen_pe, endingCycle_top));
@@ -574,13 +591,13 @@ void Scheduler_8::ScheduleMiddleDOT(int i_start_top, int i_end_top,
 					uint64_t endingCycle_top = updateBWLog(//starting_cycle,
 							starting_cycle_top,
 							top_level_traffics[pe_index_bottom][b_index_bottom],
-							top_bw_logger, top_bytes_per_ns);
+							top_bw_logger, top_bytes_per_ns, LVL1_IN_MID, true);
 					uint64_t endingCycle_middle =0;
 					if(params->doesMiddleDOTTrafficCount() == middleDOTTrafficStatus::yes){
 						endingCycle_middle = updateBWLog(//starting_cycle,
 							starting_cycle_middle,
 							middle_level_traffics[pe_index_bottom][b_index_bottom],
-							middle_bw_logger, middle_bytes_per_ns);
+							middle_bw_logger, middle_bytes_per_ns, LVL2_IN, true);
 					}
 
 					curr_times[pe_index_bottom][b_index_bottom]= std::max(
@@ -616,7 +633,7 @@ void Scheduler_8::ScheduleMiddleDOT(int i_start_top, int i_end_top,
 					//   It is just affecting the top level (LLB->DRAM) traffic.
 					uint64_t endingCycle_top = updateBWLog(outputlog_flush_time,
 							top_level_traffics_outputlog[b_index_bottom],
-							top_bw_logger, top_bytes_per_ns);
+							top_bw_logger, top_bytes_per_ns, LVL1_OUT_MID, true);
 
 					max_time_accessed_in_batch = std::max(
 							max_time_accessed_in_batch, endingCycle_top);
@@ -689,12 +706,17 @@ void Scheduler_8::ScheduleMiddleDOT(int i_start_top, int i_end_top,
 
 			uint64_t max_pe_time = *std::max_element(pe_time, pe_time+params->getPECount());
 			uint64_t endingCycle_memory = updateBWLog(max_pe_time,
-				writeback_log_size_last, top_bw_logger, top_bytes_per_ns);
+				writeback_log_size_last, top_bw_logger, top_bytes_per_ns, LVL1_OUT_MID, true);
 
 			max_time_accessed_in_batch = std::max(
 					max_time_accessed_in_batch, endingCycle_memory);
+			uint64_t res2 = matrix->getOutputLogCSFSize();
+			updateBWLogUnscheduled(res2, top_bw_logger, top_bytes_per_ns, LVL1_OUT_MID, true);
 		}
-
+	}
+	else {
+		uint64_t res2 = matrix->getOutputLogCSFSize();
+		updateBWLogUnscheduled(res2, top_bw_logger, top_bytes_per_ns, LVL1_OUT_MID, true);
 	}
 
 	stats->Set_cycles(std::max(stats->Get_cycles(), max_time_accessed_in_batch));
@@ -1112,6 +1134,48 @@ uint64_t Scheduler_8::updateBWLog(uint64_t starting_cycle, uint64_t action_bytes
 	return 0;
 }
 
+
+uint64_t Scheduler_8::updateBWLogUnscheduled(uint64_t action_bytes, float *bw_logger, float bytes_per_ns, bw_type_t bw_type, bool if_add){
+	// std::cout << "total traffic monitor is at " << total_traffic << std::endl;
+	if (if_add)
+	{
+		total_traffic_track += action_bytes;
+		total_bw_breakdown[bw_type] += action_bytes;
+	}
+	return 0;
+}
+
+uint64_t Scheduler_8::updateBWLog(uint64_t starting_cycle, uint64_t action_bytes,
+		float *bw_logger, float bytes_per_ns, bw_type_t bw_type, bool if_add){
+
+	total_traffic += action_bytes;
+
+	float action_bytes_f = float(action_bytes);
+	for(uint64_t i_idx = starting_cycle; i_idx< MAX_TIME; i_idx++){
+		float rem_cap = bytes_per_ns - bw_logger[i_idx];
+		// Move on until finding the first DRAM bw available cycle
+		if((action_bytes_f > 0) & (rem_cap == 0))
+			continue;
+		// Use the available BW, but this is not the end
+		if(action_bytes_f > rem_cap){
+			bw_logger[i_idx] = bytes_per_ns;
+			action_bytes_f -= rem_cap;
+		}
+		// Last cycle needed to transfer the specified data
+		else{
+			bw_logger[i_idx] += action_bytes_f;
+			return i_idx;
+		}
+	}
+	printf("Starting cycle: %lu, Bytes: %lu, bandwidth: %f bytes/s\n",
+			starting_cycle, action_bytes, bytes_per_ns);
+	printf("%d bandwidth logger: Max size is not enough - increase const value\n", MAX_TIME);
+	exit(1);
+
+	return 0;
+}
+
+
 // All of the PEs should finish their work before fetching the next	B tiles
 void Scheduler_8::SyncPETimes(){
 
@@ -1129,6 +1193,7 @@ void Scheduler_8::ExtractBTopTile(int k_idx, int j_idx_start){
 	int a_reuse = params->getAReuse();
 	int j_idx_stop = j_idx_start;
 	int k_idx_stop = std::min(k_idx+a_reuse, o_tiled_cols);
+	int size_and_nnz[2] = {0, 0}; 
 
 	// In static tiling case we already now what the j_idx_end
 	//	should be and have set the OReuse value in params
@@ -1137,18 +1202,29 @@ void Scheduler_8::ExtractBTopTile(int k_idx, int j_idx_start){
 				b_tiled_rows);
 		uint64_t extra_size = AccumulateSize('B', j_idx_start, j_idx_stop,
 				k_idx, k_idx_stop, params->getBFormat());
+		size_and_nnz[0] += (int) extra_size;
+		size_and_nnz[1] += AccumulateNNZ('B', j_idx_start, j_idx_stop,
+				k_idx, k_idx_stop);
 		llb->AddToLLB('B', Req::read, extra_size, UPDATE_TRAFFIC);
+		// std::cout << "Tile extracting B static (" << j_idx_start << "," << j_idx_stop << "), (" << k_idx << "," << k_idx_stop << ")" << std::endl; 
+		// std::cout << "\tsize of this tile is " << extra_size << " " <<  llb->GetSize() << " " << llb->GetCapacity() << std::endl;
+		// std::cout << "\tother edge is " << b_tiled_rows << " " << o_tiled_cols << std::endl;
 	}
 	else if(params->getTilingMechanism() == tiling::t_dynamic){
 		// Add rows until it either runs out of memory or reaches the last row
+		uint64_t full_size = 0;
 		for(int idx = j_idx_start; idx<b_tiled_rows; idx++){
 			// Find the size of the new row
 			uint64_t extra_size = AccumulateSize('B', idx, idx+1,
 					k_idx, k_idx_stop, CSX::CSF);
 			// It means that it could not fit the new row in LLB and failed
 			if(llb->DoesFitInLLB('B', extra_size) == 0) {break;}
+			size_and_nnz[0] += (int) extra_size;
+			size_and_nnz[1] += AccumulateNNZ('B', idx, idx+1,
+				k_idx, k_idx_stop);
 			llb->AddToLLB('B', Req::read, extra_size, UPDATE_TRAFFIC);
 			j_idx_stop++;
+			full_size = extra_size;
 		}
 
 		// if the if statements is correct, it means B partition of LLB still has room
@@ -1159,16 +1235,26 @@ void Scheduler_8::ExtractBTopTile(int k_idx, int j_idx_start){
 						k_idx+a_reuse, k_idx+a_reuse+1, CSX::CSF);
 				// It means that it could not fit the new row in LLB and failed
 				if(llb->DoesFitInLLB('B', extra_size) == 0) {break;}
+				size_and_nnz[0] += (int) extra_size;
+				size_and_nnz[1] += AccumulateNNZ('B', j_idx_start, j_idx_stop,
+					k_idx+a_reuse, k_idx+a_reuse+1);
 				llb->AddToLLB('B', Req::read, extra_size, UPDATE_TRAFFIC);
 				a_reuse++;
+				full_size = extra_size;
 			}
 			params->setAReuse(a_reuse);
 		}
-		params->setOReuse(j_idx_stop- j_idx_start);
+		params->setOReuse(j_idx_stop - j_idx_start);
+		
+		// std::cout << "Tile extracting B dynamic (" << j_idx_start << "," << j_idx_stop << "), (" << k_idx << "," << k_idx + a_reuse << ", " << k_idx_stop << ")" << \
+		// 	" size " << full_size << " " << llb->GetSize() << " vs " << llb->GetCapacity() << std::endl;
+	    //    bool res = k_idx+a_reuse < o_tiled_cols;	
+		// std::cout << "\tother edge is " << b_tiled_rows << " " << o_tiled_cols << " " << k_idx+a_reuse << " " << res  << " " << llb->DoesFitInLLB('B', full_size) <<  std::endl;
 	}
 	else{
 		printf("No Such Tiling Mechanism is Available!\n");
 	}
+	updateBWLogUnscheduled(size_and_nnz[0], top_bw_logger, 0, LVL1_IN_PRE_B, true);
 
 	/***************************************************************/
 	// Calculate the basic tile build overhead top level (DRAM->LLB))
@@ -1285,6 +1371,7 @@ void Scheduler_8::PreCalculateARowsSize(int j_start, int j_end,
 	CalcBLLBHorizontalSum(j_start, j_end,
 		k_start, k_end, b_llb_horizontalSum);
 
+	omp_set_num_threads(8);
 	#pragma omp parallel for
 	for(int i_idx = 0; i_idx < o_tiled_rows; i_idx++){
 		// Find the size of the A row size needs to be fetched
@@ -1340,7 +1427,7 @@ void Scheduler_8::EarlyFetchABasicTiles(int i_start_top, int i_end_top,
 			*std::min_element(pe_time, pe_time+params->getPECount());
 		// Now do the actual fetching of all A data and metadata
 		uint64_t endingCycle_top = updateBWLog(starting_cycle_top, a_traffic,
-			top_bw_logger, top_bytes_per_ns);
+			top_bw_logger, top_bytes_per_ns, LVL1_IN_PRE_A, true);
 		// No process can start before loading A basic tile data/metadata
 		for(int pe_idx = 0; pe_idx < params->getPECount(); pe_idx++){
 			if(pe_time[pe_idx] < endingCycle_top)
@@ -1387,7 +1474,7 @@ void Scheduler_8::EarlyFetchBBasicTiles(int j_start_top, int j_end_top,
 			*std::min_element(pe_time, pe_time+params->getPECount());
 		// Now do the actual fetching of all B data and metadata
 		uint64_t endingCycle_top = updateBWLog(starting_cycle_top, b_traffic,
-			top_bw_logger, top_bytes_per_ns);
+			top_bw_logger, top_bytes_per_ns, LVL1_IN_PRE_B, true);
 		// No process can start before loading B basic tile data/metadata
 		for(int pe_idx = 0; pe_idx < params->getPECount(); pe_idx++){
 			if(pe_time[pe_idx] < endingCycle_top)
@@ -1498,6 +1585,216 @@ uint64_t Scheduler_8::multiplyOneARowInLogOutput(int i_idx,
 	// Report the COO size that the output produces
 	return matrix->getOutputLogNNZCOOSize();
 
+}
+
+// ExtractAOTopTiles gets the dimensions of the B LLB tile and grows number of rows
+// until filling up the top buffer (LLB) for A and O tensors
+//	Tasks: 1) Report i_end_top 2) Fetch A and O top tiles into LLB buffer
+void Scheduler_8::ExtractATopTile(int i_start_top, int &i_end_top,
+		int j_start_top, int j_end_top, int k_start_top, int k_end_top, int other_traffic){
+	int size_and_nnz[2] = {0, 0};
+
+	// In the static tiling mechasnism we already know what i_idx_end
+	//	should be since it is constant!
+	if(params->getTilingMechanism() == tiling::t_static){
+        // not o_tiled_rows 
+		i_end_top = std::min(i_start_top + params->getITopTile(), o_tiled_rows);
+		uint64_t a_row_size = 0;
+		for(int i_idx_top = i_start_top; i_idx_top < i_end_top; i_idx_top++){
+			a_row_size += vecCommittedRows_ASize[i_idx_top];
+		}
+		llb->AddToLLB('A', Req::read, a_row_size, UPDATE_TRAFFIC);
+		if (other_traffic > 0)
+		{
+			size_and_nnz[0] = (int) AccumulateSize('A', i_start_top, i_end_top,
+				k_start_top, k_end_top, params->getBFormat());
+			size_and_nnz[1] = AccumulateNNZ('A', i_start_top, i_end_top,
+				k_start_top, k_end_top);
+		}
+	}
+	else if(params->getTilingMechanism() == tiling::t_dynamic){
+		// SoL variant of llb partitioning policy! It assumes a constant B percentage
+		//	then looks at after computation output size to determine the ideal
+		//	LLB partitioning between A and O
+		// THIS IS AN SOL VARIANT! don't use it for TACTile non-SoL variants!
+		if(params->getLLBPartitionPolicy() ==  llbPartitionPolicy::ideal){
+			uint64_t a_llb_size = 0, o_llb_size = 0;
+			// B LLB Size
+			uint64_t b_llb_size = llb->GetBSize();
+
+			// Please note that only one output log matrix is produced for the whole process and
+			//   after each row computation it is cleaned up (NOT deleted) for the next row
+			// Create a temporary log matrix to see if the LLB tile sizing works
+			//   It consists of only one row
+			matrix->initOutputLogMatrix(i_start_top, i_start_top+1, k_start_top, k_end_top);
+
+			for(int i_idx_top = i_start_top; i_idx_top<o_tiled_rows;i_idx_top++){
+				// This is a A row multiplication out of ExTensor style!
+				// Multiplies a row of A to a B LLB tile
+				uint64_t output_size = multiplyOneARowInLogOutput(i_idx_top,
+						j_start_top, j_end_top, k_start_top, k_end_top);
+				// If the newly produved output size allows then ncrement the number of LLB tile rows
+				if((a_llb_size + vecCommittedRows_ASize[i_idx_top] +
+							o_llb_size + output_size + b_llb_size) < llb->GetCapacity()){
+					a_llb_size += vecCommittedRows_ASize[i_idx_top];
+					o_llb_size += output_size;
+					i_end_top++;
+				}
+				else{ break; }
+			}
+
+			// Remove the temporary log matrix created
+			matrix->deleteOutputLogMatrix();
+
+			// Add the finalized a_llb_size to the llb memory
+			llb->AddToLLB('A', Req::read, a_llb_size, UPDATE_TRAFFIC);
+
+			// Get the capacity of the llb and determine how much of it is left out for output!
+			uint64_t llbCapacity = llb->GetCapacity();
+			o_llb_size = llbCapacity - a_llb_size - b_llb_size;
+			// First set the ratios
+			llb->SetRatios((float)a_llb_size / (float)llbCapacity,
+					(float)b_llb_size/ (float)llbCapacity,
+					(float)o_llb_size/ (float)llbCapacity);
+			// Then set the new sizes
+			// PLEASE don't change the order between ratios and sizes function calls
+			llb->SetSizes(a_llb_size, b_llb_size, o_llb_size);
+
+			printf("New ratios: %0.2f, %0.2f, %0.2f for i [%d-%d] \n",
+					llb->GetARatio(), llb->GetBRatio(), llb->GetORatio(), i_start_top, i_end_top );
+			//printf("New sizes: %lu, %lu, %lu for %d rows\n",
+			//	a_llb_size, b_llb_size, o_llb_size, i_end_top-i_start_top);
+			fflush(stdout);
+			if (other_traffic > 0)
+			{
+				size_and_nnz[0] = (int) AccumulateSize('A', i_start_top, i_end_top,
+					k_start_top, k_end_top, params->getBFormat());
+				size_and_nnz[1] = AccumulateNNZ('A', i_start_top, i_end_top,
+						k_start_top, k_end_top);
+			}
+		}
+		// If not using the ideal llb partitioning policy(an SoL variant) then take the easy way
+		else{
+			i_end_top = i_start_top;
+			// Go over every row until reaching the maximum partition allowance
+			for(int i_idx_top = i_start_top; i_idx_top < o_tiled_rows; i_idx_top++ ){
+				uint64_t a_row_size = vecCommittedRows_ASize[i_idx_top];
+				if (llb->DoesFitInLLB('A', a_row_size)){
+					llb->AddToLLB('A', Req::read, a_row_size, UPDATE_TRAFFIC);
+					i_end_top++;
+				}
+				else{break;}
+			}
+			if (other_traffic > 0)
+			{
+				size_and_nnz[0] = (int) AccumulateSize('A', i_start_top, i_end_top,
+					k_start_top, k_end_top, params->getBFormat());
+				size_and_nnz[1] = AccumulateNNZ('A', i_start_top, i_end_top,
+						k_start_top, k_end_top);
+			}
+		}
+
+	}
+	else{
+		printf("No such Tiling Mechanism is Available!\n"); exit(1);
+	}
+	if (other_traffic > 0)
+		updateBWLogUnscheduled(size_and_nnz[0], top_bw_logger, 0, LVL1_IN_PRE_A, true);
+	// Please note that Extract Unit overheads for A are calculated
+	//	similar to calculations for matrix B
+	// / *************************************************************** /
+	// Calculate the basic tile build overhead top level (DRAM->LLB))
+	// Important output : overhead_basic_tile_build
+	uint64_t overhead_basic_tile_build = 0;
+	// Instant and not tile build will take 0 cycles
+	if((params->getBasicTileBuildModelTop() == basic_tile_build::instant)
+			|(params->getBasicTileBuildModelTop() == basic_tile_build::noTilebuild))
+		overhead_basic_tile_build = 0;
+	// Parallel and serial cases
+	else{
+		int length_array = j_end_top - j_start_top;
+		uint64_t * per_col_runtime =	new uint64_t[length_array];
+		// Get the overhead of building basic tiles in each column
+		for(int j_idx_middle = j_start_top;
+				j_idx_middle< j_start_top + length_array;
+				j_idx_middle++){
+			uint64_t nnz =
+				AccumulateNNZ('A', i_start_top, i_end_top, j_idx_middle, j_idx_middle+1);
+			uint64_t nnr =
+				AccumulateNNR('A', i_start_top, i_end_top, j_idx_middle, j_idx_middle+1);
+			per_col_runtime[j_idx_middle-j_start_top] = nnz+nnr;
+			overhead_basic_tile_build += (nnz+nnr);
+		}
+		// if we are doing it parallel then schedule it with
+		//	column granularity
+		if(params->getBasicTileBuildModelTop() == basic_tile_build::parallel){
+			int par_factor = par_tbuild_A_top;
+			int *sched_arr = new int[par_factor];
+			std::fill(sched_arr, sched_arr+par_factor, 0);
+			for (int p_idx = 0; p_idx < length_array; p_idx++){
+				*std::min_element(sched_arr, sched_arr+par_factor) += per_col_runtime[p_idx];
+			}
+			overhead_basic_tile_build = *std::max_element(sched_arr, sched_arr+par_factor);
+			delete [] sched_arr;
+		}
+		delete [] per_col_runtime;
+	}
+
+	// / *  Calculate the search overhead top level (DRAM->LLB) * /
+	// Important output : overhead_search
+	uint64_t overhead_search = 0;
+	uint64_t serial_overhead_search = 0;
+	uint64_t max_overhead_column = 0;
+	// Instant and not tile build will take 0 cycles
+	if(params->getSearchModelTop() == search_tiles::instant)
+		overhead_search = 0;
+	else{
+		for(int j_idx_middle = j_start_top; j_idx_middle< j_end_top; j_idx_middle++){
+			uint64_t overhead_column =
+				AccumulateNNZTiles('A', i_start_top, i_end_top, j_idx_middle, j_idx_middle+1);
+			serial_overhead_search += overhead_column;
+			max_overhead_column = std::max(max_overhead_column, overhead_column);
+		}
+		// Parallel case
+		if(params->getSearchModelTop() == search_tiles::parallel){
+			uint64_t temp = (serial_overhead_search%par_search_top == 0)?
+				serial_overhead_search/ par_search_top:
+				serial_overhead_search/ par_search_top + 1;
+			overhead_search = temp + log2_search_top;
+		}
+		// Serial case
+		else{
+			overhead_search = serial_overhead_search;
+		}
+	}
+
+	// Calculate the metadata build overhead of LLB
+	// Important output : overhead_mbuild, overhead_posbuild
+	uint64_t overhead_mbuild = 0; // idx of metadata
+	uint64_t overhead_posbuild = 0; // pos of metadata
+	// Instant will take 0 cycles
+	if(params->getMetadataBuildModelTop() == metadata_build::instant)
+		{overhead_mbuild = 0; overhead_posbuild = 0;}
+	else if(params->getMetadataBuildModelTop() == metadata_build::serial){
+		overhead_mbuild = serial_overhead_search;
+		overhead_posbuild = 0;
+	}
+	else{
+		overhead_mbuild = max_overhead_column;
+		overhead_posbuild = uint64_t(log2_mbuild_top + 1);
+	}
+
+	// overhead = max(tbuild,search,mbuilt) + overhead_posbuild;
+	overhead_extractor_top_A = std::max(overhead_basic_tile_build,
+			overhead_search);
+	overhead_extractor_top_A = std::max(overhead_extractor_top_A, overhead_mbuild);
+	overhead_extractor_top_A += overhead_posbuild;
+	// This variable is used to know when extracting tensor B for LLB is over
+	extractor_top_A_done = overhead_extractor_top_A +
+		std::max(
+				tbuild_search_top_B_done,
+				*std::min_element(pe_time, pe_time+params->getPECount()));
+	return;
 }
 
 // ExtractAOTopTiles gets the dimensions of the B LLB tile and grows number of rows
@@ -2029,6 +2326,7 @@ void Scheduler_8::printPEs(){
 	return;
 }
 
+
 void Scheduler_8::PrintBWUsage(){
 	//uint64_t size = 0;
 	double size_top = 0, size_middle = 0;
@@ -2039,16 +2337,40 @@ void Scheduler_8::PrintBWUsage(){
 	for(auto i=stats->Get_cycles()+1; i<stats->Get_cycles()+1000; i++){
 		if(top_bw_logger[i] !=0) { printf("Shiiiit!\n"); break;}
 	}
-	printf("Top bandwidth logger: %lu bytes, %f GBs\n", (uint64_t)size_top, (double)size_top/(1024.0*1024.0*1024.0));
+	printf("Top bandwidth logger: %lu bytes, %lu bytes, %f GBs\n", (uint64_t)size_top, (uint64_t) total_traffic, (double)size_top/(1024.0*1024.0*1024.0));
+	std::cout << " bandwidth breakdown " << "total inp " << total_bw_breakdown[0] << " total out " << total_bw_breakdown[1] \
+		<< " lvl2: " << total_bw_breakdown[2] << " " << total_bw_breakdown[3] << std::endl;
+	std::cout << " input breakdown " << " b: " << total_bw_breakdown[6] << ", a: " << total_bw_breakdown[5] << " mid lvl in: " << total_bw_breakdown[4] <<  ", out: " << total_bw_breakdown[7] << std::endl;
 	printf("Middle bandwidth logger: %lu bytes, %f GBs\n", (uint64_t)size_middle, (double)size_middle/(1024.0*1024.0*1024.0));
 
 	printf("BW logger a: %lu, b: %lu, o_r: %lu, o_w: %lu\n", a_bwl_traffic, b_bwl_traffic, o_bwl_traffic_read, o_bwl_traffic_write);
 
 	printf("total_traffic %lu, a_read %lu, b read %lu, o_read %lu, o_write %lu\n",
-			total_traffic, a_traffic, b_traffic, o_traffic_read, o_traffic_write);
+			total_traffic_track, a_traffic, b_traffic, o_traffic_read, o_traffic_write);
     PrintBWLog();
 	return;
 }
+
+// void Scheduler_8::PrintBWUsage(){
+// 	//uint64_t size = 0;
+// 	double size_top = 0, size_middle = 0;
+// 	for (uint64_t i=0; i<= stats->Get_cycles(); i++){
+// 		size_top += top_bw_logger[i];
+// 		size_middle += middle_bw_logger[i];
+// 	}
+// 	for(auto i=stats->Get_cycles()+1; i<stats->Get_cycles()+1000; i++){
+// 		if(top_bw_logger[i] !=0) { printf("Shiiiit!\n"); break;}
+// 	}
+// 	printf("Top bandwidth logger: %lu bytes, %f GBs\n", (uint64_t)size_top, (double)size_top/(1024.0*1024.0*1024.0));
+// 	printf("Middle bandwidth logger: %lu bytes, %f GBs\n", (uint64_t)size_middle, (double)size_middle/(1024.0*1024.0*1024.0));
+
+// 	printf("BW logger a: %lu, b: %lu, o_r: %lu, o_w: %lu\n", a_bwl_traffic, b_bwl_traffic, o_bwl_traffic_read, o_bwl_traffic_write);
+
+// 	printf("total_traffic %lu, a_read %lu, b read %lu, o_read %lu, o_write %lu\n",
+// 			total_traffic, a_traffic, b_traffic, o_traffic_read, o_traffic_write);
+//     PrintBWLog();
+// 	return;
+// }
 
 void Scheduler_8::PrintBWLog(){
 	FILE * pFile;

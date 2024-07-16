@@ -134,7 +134,7 @@ class Matrix{
 		int accumulateCSFSize(char mat_name, int i_idx, int j_idx_start, int j_idx_end);
 		int accumulateCSFSize_sparse(char mat_name, int i_idx,
 				int j_idx_start, int j_idx_end, CSX inp_format);
-
+		uint64_t getOutputLogCSFSize();
 		// Get the total NNZ of a tile range
 		int accumulateNNZ(char mat_name, int i_idx, int j_idx_start,
 			 	int j_idx_end, CSX inp_format);

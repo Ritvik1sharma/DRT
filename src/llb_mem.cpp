@@ -40,6 +40,43 @@ int LLB_Mem::AddToLLB(char mat_name, Req rd_wr, uint64_t bytes, int update_traff
 	return 1;
 }
 
+int LLB_Mem::AddToLLB(char mat_name, Req rd_wr, uint64_t bytes, int update_traffic, int dont_add){
+	// There is no space left; early termination
+	switch (mat_name){
+		case 'A':
+			a_size += bytes;
+			if(update_traffic) stats->Accumulate_a_read(bytes);
+			break;
+		case 'B':
+			b_size += bytes;
+			if(update_traffic) stats->Accumulate_b_read(bytes);
+			break;
+		case 'O':
+			if(dont_add)
+				o_size += bytes;
+			if(update_traffic){
+				if (rd_wr == Req::read)
+					stats->Accumulate_o_read(bytes);
+				else
+					stats->Accumulate_o_write(bytes);
+			}
+			break;
+		default: printf("Unknown variable is requested!\n"); exit(1);
+	}
+	// Update total used capacity bytes of the LLB
+	if(dont_add)
+		used_size += bytes;
+
+	//if(used_size > total_size)
+	//	printf("Exceeding The Size! %f\n",(double)total_size/(1024.0*1024.0));
+
+	// Log the maximum ever used LLB capacity
+	if (used_size > max_used_size)
+		max_used_size = used_size;
+
+	return 1;
+}
+
 // Checks if a specific size of data can fit into LLB
 // The routine will not take any action
 // returns 0 upon a failure and 1 otherwise
@@ -108,6 +145,24 @@ void LLB_Mem::RemoveFromLLB(char mat_name, Req rd_wr, uint64_t bytes, int update
 // Completely erase the tiles corresponding to a matrix from LLB
 // Updates the write statistics for O in case update_traffic is on
 void LLB_Mem::EvictMatrixFromLLB(char mat_name, int update_traffic){
+	switch (mat_name){
+		case 'A': a_size = 0;
+			break;
+		case 'B': b_size = 0;
+			break;
+		case 'O':
+				if(update_traffic) stats->Accumulate_o_write(o_size);
+				o_size = 0;
+			break;
+		default: printf("Unknown variable is requested!\n"); exit(1);
+	}
+	this->used_size = a_size + b_size + o_size;
+}
+
+
+// Completely erase the tiles corresponding to a matrix from LLB
+// Updates the write statistics for O in case update_traffic is on
+void LLB_Mem::EvictMatrixFromLLB(char mat_name, int update_traffic, int dont_add){
 	switch (mat_name){
 		case 'A': a_size = 0;
 			break;

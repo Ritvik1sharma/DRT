@@ -129,7 +129,7 @@ void initializeInputParameters(input_parameters_st *input_params){
 	// Static LLB partitioning percentages for a, b, and O
 	input_params->p_a_llb_perc = 0.33;	input_params->p_b_llb_perc = 0.33;	input_params->p_o_llb_perc = 0.33;
 	// LLB Size
-	input_params->p_llb_size = 32768*4*3;
+	input_params->p_llb_size = 32768*4*3; // 197644
 	// LLB partitioning policy
 	input_params->p_llb_partition_policy = llbPartitionPolicy::constant_initial;
 

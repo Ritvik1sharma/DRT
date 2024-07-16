@@ -28,6 +28,18 @@ enum class Dim{
     k_dim
 };
 
+typedef enum {
+		LVL1_IN = 0,
+			LVL1_OUT = 1,
+				LVL2_IN = 2,
+					LVL2_OUT = 3,
+						LVL1_IN_MID = 4,
+							LVL1_IN_PRE_A = 5,
+								LVL1_IN_PRE_B = 6,
+									LVL1_OUT_MID = 7
+} bw_type_t;
+
+
 class Scheduler_8{
 
 	public:
@@ -162,6 +174,9 @@ class Scheduler_8{
 		void ExtractATopTile(int i_start_top, int & i_end_top,
 				int j_start_top, int j_end_top, int k_start_top, int k_end_top);
 
+				void ExtractATopTile(int i_start_top, int & i_end_top,
+										int j_start_top, int j_end_top, int k_start_top, int k_end_top, int other_traffic);
+
 		// Multiplies one LLB row of A to a B LLB tile and reports what the iutput size will be
 		// Please note that this is just for the ideal llb partition policy and meant to
 		//	produce SoL variant result.
@@ -194,7 +209,10 @@ class Scheduler_8{
 		//   logger and bytes_per_ns (they can be for top or middle levels)
 		uint64_t updateBWLog(uint64_t startingCycle, uint64_t action_bytes,
 				float *bw_logger, float bytes_per_ns);
-
+				uint64_t updateBWLog(uint64_t startingCycle, uint64_t action_bytes,
+										float *bw_logger, float bytes_per_ns, bw_type_t bw_type, bool if_add);
+						uint64_t updateBWLogUnscheduled(uint64_t action_bytes,
+												float *bw_logger, float bytes_per_ns, bw_type_t bw_type, bool if_add);
 		// Find out what is the A row size we need to fetch
 		//	after LLB intersection
 		void PreCalculateARowsSize(int j_start, int j_end,
@@ -306,7 +324,7 @@ class Scheduler_8{
 		uint64_t o_bwl_traffic_write;
 
 		uint64_t total_traffic;
-
+		uint64_t total_traffic_track;
 		uint64_t * pe_utilization_logger;
 
 };

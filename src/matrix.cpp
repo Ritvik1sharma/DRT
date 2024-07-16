@@ -11,6 +11,7 @@ Matrix::Matrix(char * file_name, Parameters * params, Stats * stats, LLB_Mem * l
 
 	// Matrix A load then tiling
  	a_coo = new COO_format;
+	std::cout << "reading  out a matrix" << std::endl;
 	ReadMatrix(file_name, this->a_coo);
 
 	if((params->getIntersectModel() == intersect::idealModel)
@@ -261,7 +262,7 @@ void Matrix::ReadMatrix(char * filename, COO_format * matrix_coo){
 		printf("Market Market type: [%s]\n", mm_typecode_to_str(matcode));
 		exit(1);
   }
-
+  std::cout << "file name is " << filename << std::endl;
   /* find out size of sparse matrix .... */
 	if ((ret_code = mm_read_mtx_crd_size(f, &M, &N, &nz)) !=0)
 		exit(1);
@@ -496,6 +497,7 @@ void Matrix::ConstructSkipModelTable(){
 	// Run the skip model for rows in parallel
 	//  Each row will return one queue, then they will be merged in
 	//  an unordered_map hash table
+	omp_set_num_threads(8);		
 	#pragma omp parallel for
 	for (int i_idx = 0; i_idx<a_csr_tiled->row_size; i_idx++){
 		calcRowSkipModelTable(i_idx, skipCycles[i_idx]);
@@ -585,8 +587,9 @@ void Matrix::PreTileOutput(CSR_tile_format * matrix_csr_tiled, int i, int k){
 			matrix_csr_tiled->csr_tiles[i_idx][j_idx].row_size = tile_size;
 			matrix_csr_tiled->csr_tiles[i_idx][j_idx].col_size = tile_size;
 		}
+	
 	}
-
+	std::cout << "pretiling output done " << tile_size << std::endl; 
 	return;
 }
 
@@ -741,6 +744,13 @@ uint64_t Matrix::getOutputLogNNZCOOSize(){
 	return total_coo_size;
 }
 
+
+uint64_t Matrix::getOutputLogCSFSize(){
+		uint64_t csf_size = this->params->getIdxSize()*(2 + 2*std::min(o_csr_tiled_log->row_size*this->params->getTileSize(), o_csr_tiled_log->nnz)\
+										 + 1 + o_csr_tiled_log->nnz) + params->getDataSize()*o_csr_tiled_log->nnz;
+			return csf_size;
+}
+
 // Returns the NNZ count of the ouput log matrix
 int Matrix::getOutputLogNNZCount(){
 
@@ -757,9 +767,11 @@ void Matrix::TileInput(COO_format * matrix_coo, CSR_tile_format * matrix_csr_til
 
 	// Find the row and column size of the tiled (B)CSR representation;
 	//	with a high chance it needs padding
+	std::cout << "tiling here for A " << matrix_coo->row_size;
 	matrix_csr_tiled->row_size = (int)ceil((float)matrix_coo->row_size/tile_size);
 	matrix_csr_tiled->col_size = (int)ceil((float)matrix_coo->col_size/tile_size);
 	matrix_csr_tiled->nnz = 0;
+	std::cout << matrix_csr_tiled->row_size << " " << tile_size << std::endl;
 
 	// Dynamically allocate the tiles of the (B)CSR representation
 	//	It is a 2D [row_size][column_size] structure
@@ -846,6 +858,7 @@ void Matrix::TileInput(COO_format * matrix_coo, CSR_tile_format * matrix_csr_til
 	//   start_idx and end_idx help to have smaller search space so it
 	//   reduces wasted computation
 	//omp_set_num_threads(params->getNumThreads());
+	omp_set_num_threads(8);
 	#pragma omp parallel for
 	for(int i_idx = 0; i_idx < matrix_csr_tiled->row_size ; i_idx++){
 		#pragma omp parallel for

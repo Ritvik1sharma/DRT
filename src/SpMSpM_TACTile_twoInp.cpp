@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
   
     
 	// LLB memory
-	LLB_Mem * llb = new LLB_Mem(stats, params, ip->p_llb_size*1024*1024, ip->p_a_llb_perc, ip->p_b_llb_perc, ip->p_o_llb_perc);
+	LLB_Mem * llb = new LLB_Mem(stats, params, ip->p_llb_size, ip->p_a_llb_perc, ip->p_b_llb_perc, ip->p_o_llb_perc);
   printf("After LLB_mem\n");
   fflush(stdout);
   
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
   fflush(stdout);
   
 	sched_8->Run();
-
+	std::cout << " Get run time " << std::endl;
 	printf("runtime: %f, cycles: %lu, busy_cycles: %lu\n",
 			stats->Get_runtime(), stats->Get_cycles(), stats->Get_pe_busy_cycles());
 
@@ -109,7 +109,7 @@ void initializeInputParameters(input_parameters_st *input_params){
 	input_params->p_b_format = CSX::CSF; input_params->p_o_format = CSX::CSF; input_params->p_dense_cols=1;
 	input_params->p_tiling = tiling::t_dynamic; input_params->p_static_dist = static_distributor::round_robin;
 	input_params->p_middle_dataflow = arch::outerProdMiddle;
-	input_params->p_static_i = 128; input_params->p_static_j = 128; input_params->p_static_k = 128;
+	input_params->p_static_i = 4; input_params->p_static_j = 4; input_params->p_static_k = 4;
 	input_params->p_tile_dim = 32; input_params->p_pe_count = 128; input_params->p_cam_nums =33;
 	input_params->p_top_bw = 68.25; input_params->p_middle_bw = 2048.0;
 	input_params->p_chip_freq = 1000000000; input_params->p_thread_count = 10; input_params->p_a_reuse = 128;
@@ -127,9 +127,9 @@ void initializeInputParameters(input_parameters_st *input_params){
 	// Bottom buffer a percentage (of the total buffer size)
 	input_params->p_a_bottom_buffer_perc = 0.5;
 	// Static LLB partitioning percentages for a, b, and O
-	input_params->p_a_llb_perc = 0.05;	input_params->p_b_llb_perc = 0.5;	input_params->p_o_llb_perc = 0.45;
+	input_params->p_a_llb_perc = 0.33;	input_params->p_b_llb_perc = 0.33;	input_params->p_o_llb_perc = 0.33;
 	// LLB Size
-	input_params->p_llb_size = 30;
+	input_params->p_llb_size = 32768*4*3;
 	// LLB partitioning policy
 	input_params->p_llb_partition_policy = llbPartitionPolicy::constant_initial;
 

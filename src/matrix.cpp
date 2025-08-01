@@ -497,7 +497,7 @@ void Matrix::ConstructSkipModelTable(){
 	// Run the skip model for rows in parallel
 	//  Each row will return one queue, then they will be merged in
 	//  an unordered_map hash table
-	omp_set_num_threads(8);		
+	omp_set_num_threads(4);		
 	#pragma omp parallel for
 	for (int i_idx = 0; i_idx<a_csr_tiled->row_size; i_idx++){
 		calcRowSkipModelTable(i_idx, skipCycles[i_idx]);
@@ -866,7 +866,7 @@ void Matrix::TileInput(COO_format * matrix_coo, CSR_tile_format * matrix_csr_til
 	//   start_idx and end_idx help to have smaller search space so it
 	//   reduces wasted computation
 	//omp_set_num_threads(params->getNumThreads());
-	omp_set_num_threads(8);
+	omp_set_num_threads(4);
 	#pragma omp parallel for
 	for(int i_idx = 0; i_idx < matrix_csr_tiled->row_size ; i_idx++){
 		#pragma omp parallel for

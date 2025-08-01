@@ -1,0 +1,43 @@
+After stats
+After LLB_mem
+file name is /nobackupkiwi/rsharma3/Sparsity/DRT/DRT/data//sx-mathoverflow.mtx
+tiling here for A 24818776 32
+tiling here for A 24818776 32
+Finished pretiling input A
+file name is /nobackupkiwi/rsharma3/Sparsity/DRT/DRT/data//sx-mathoverflow.mtx
+Finished reading the matrix
+tiling here for A 24818776 32
+tiling here for A 24818776 32
+Finished pretiling input B
+pretiling output done 32
+Start Builing the Look-up Table!
+Copying information to the main hash table!
+Done!
+After new matrix
+Sanity check, middle bandwidth is now 2199.023193, 2199023255552.000000
+After scheduling
+Debug: top k 0 of 776
+Debug: top k 128 of 776
+Debug: top k 256 of 776
+Debug: top k 384 of 776
+Debug: top k 512 of 776
+Debug: top k 640 of 776
+Debug: top k 768 of 776
+ Get run time 
+runtime: 0.020807, cycles: 20807307, busy_cycles: 101189641
+Top DOT NoC:
+ total_top: 1.314155 GBs, a_top: 36316116, b_top: 5751644, o_r_top: 557124512, o_w_top: 811870688
+Middle DOT NoC:
+ total_mid: 0.596977 GBs, a_mid: 36316116, b_mid: 36141668, o_r_mid: 0, o_w_mid: 568541072
+Top bandwidth logger: 1426452941 bytes, 1426953920 bytes, 1.328488 GBs
+ bandwidth breakdown total inp 0 total out 0 lvl2: 0 0
+ input breakdown  b: 5751644, a: 63110040 mid lvl in: 0, out: 18387200
+Middle bandwidth logger: 0 bytes, 0.000000 GBs
+BW logger a: 0, b: 0, o_r: 0, o_w: 0
+total_traffic 87248884, a_read 0, b read 0, o_read 0, o_write 0
+Model 0 report is based on skip model, changes with tile size
+Model 0: 0.000791
+Model 1: 0.003850
+A_csf: 5751644, B_csf: 5751644, O_csf: 270637136, O_COO: 297726144, bandwidth: 68.250000 GB/s
+Sorted PE intersection cycles:
+MEAN: 790544, STDEV 177586

@@ -1,0 +1,90 @@
+After stats
+After LLB_mem
+file name is /nobackupkiwi/rsharma3/Sparsity/DRT/DRT/data//pwtk.mtx
+tiling here for A 2179186810 32
+tiling here for A 2179186810 32
+Finished pretiling input A
+file name is /nobackupkiwi/rsharma3/Sparsity/DRT/DRT/data//pwtk.mtx
+Finished reading the matrix
+tiling here for A 2179186810 32
+tiling here for A 2179186810 32
+Finished pretiling input B
+pretiling output done 32
+Start Builing the Look-up Table!
+Copying information to the main hash table!
+Done!
+After new matrix
+Sanity check, middle bandwidth is now 2199.023193, 2199023255552.000000
+After scheduling
+Debug: top k 0 of 6810
+Debug: top k 128 of 6810
+Debug: top k 256 of 6810
+Debug: top k 384 of 6810
+Debug: top k 512 of 6810
+Debug: top k 640 of 6810
+Debug: top k 768 of 6810
+Debug: top k 896 of 6810
+Debug: top k 1024 of 6810
+Debug: top k 1152 of 6810
+Debug: top k 1280 of 6810
+Debug: top k 1408 of 6810
+Debug: top k 1536 of 6810
+Debug: top k 1664 of 6810
+Debug: top k 1792 of 6810
+Debug: top k 1920 of 6810
+Debug: top k 2048 of 6810
+Debug: top k 2176 of 6810
+Debug: top k 2304 of 6810
+Debug: top k 2432 of 6810
+Debug: top k 2560 of 6810
+Debug: top k 2688 of 6810
+Debug: top k 2816 of 6810
+Debug: top k 2944 of 6810
+Debug: top k 3072 of 6810
+Debug: top k 3200 of 6810
+Debug: top k 3328 of 6810
+Debug: top k 3456 of 6810
+Debug: top k 3584 of 6810
+Debug: top k 3712 of 6810
+Debug: top k 3840 of 6810
+Debug: top k 3968 of 6810
+Debug: top k 4096 of 6810
+Debug: top k 4224 of 6810
+Debug: top k 4352 of 6810
+Debug: top k 4480 of 6810
+Debug: top k 4608 of 6810
+Debug: top k 4736 of 6810
+Debug: top k 4864 of 6810
+Debug: top k 4992 of 6810
+Debug: top k 5120 of 6810
+Debug: top k 5248 of 6810
+Debug: top k 5376 of 6810
+Debug: top k 5504 of 6810
+Debug: top k 5632 of 6810
+Debug: top k 5760 of 6810
+Debug: top k 5888 of 6810
+Debug: top k 6016 of 6810
+Debug: top k 6144 of 6810
+Debug: top k 6272 of 6810
+Debug: top k 6400 of 6810
+Debug: top k 6528 of 6810
+Debug: top k 6656 of 6810
+Debug: top k 6784 of 6810
+ Get run time 
+runtime: 0.075820, cycles: 75820289, busy_cycles: 690832990
+Top DOT NoC:
+ total_top: 2.817312 GBs, a_top: 202292644, b_top: 147246584, o_r_top: 1184899728, o_w_top: 1490627192
+Middle DOT NoC:
+ total_mid: 1.543141 GBs, a_mid: 202292644, b_mid: 200778232, o_r_mid: 0, o_w_mid: 1253864576
+Top bandwidth logger: 3124644319 bytes, 3130286628 bytes, 2.910052 GBs
+ bandwidth breakdown total inp 0 total out 0 lvl2: 0 0
+ input breakdown  b: 147246584, a: 3610807412 mid lvl in: 0, out: 109593615
+Middle bandwidth logger: 0 bytes, 0.000000 GBs
+BW logger a: 0, b: 0, o_r: 0, o_w: 0
+total_traffic 3867647611, a_read 0, b read 0, o_read 0, o_write 0
+Model 0 report is based on skip model, changes with tile size
+Model 0: 0.005397
+Model 1: 0.009626
+A_csf: 147246584, B_csf: 147246584, O_csf: 410947944, O_COO: 523054624, bandwidth: 68.250000 GB/s
+Sorted PE intersection cycles:
+MEAN: 5397133, STDEV 414582

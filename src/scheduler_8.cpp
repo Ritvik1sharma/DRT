@@ -322,8 +322,8 @@ void Scheduler_8::ScheduleMiddleDOT(int i_start_top, int i_end_top,
 	uint32_t total_top_traffic = 0,	total_middle_traffic = 0;
 
 	uint64_t LogWriteBackSize= 0;
-	printf("i_top:[%d:%d), j_top: [%d:%d), k_top: [%d:%d)\n",
-		i_start_top, i_end_top, j_start_top, j_end_top, k_start_top, k_end_top);
+	//printf("i_top:[%d:%d), j_top: [%d:%d), k_top: [%d:%d)\n",
+	//	i_start_top, i_end_top, j_start_top, j_end_top, k_start_top, k_end_top);
 	uint64_t batch_starting_cycle =
 			*std::min_element(pe_time, pe_time+params->getPECount());
 
@@ -638,8 +638,8 @@ void Scheduler_8::ScheduleMiddleDOT(int i_start_top, int i_end_top,
 						outputlog_flush_time = std::max(outputlog_flush_time,
 								curr_times[t_idx][b_index_bottom]);
 					// Ignore the output since this is not going to affect PE execution times
-					//   It is just affecting the top level (LLB->DRAM) traffic.
-					std::cout << "partial log back check" << std::endl;
+					//   It is just affecting the top level (LLB->DRAM) traffic. 
+					//////////////// std::cout << "partial log back check" << std::endl;
 					uint64_t endingCycle_top = updateBWLog(outputlog_flush_time,
 							top_level_traffics_outputlog[b_index_bottom],
 							top_bw_logger, top_bytes_per_ns, LVL1_OUT_MID, true);
@@ -721,13 +721,13 @@ void Scheduler_8::ScheduleMiddleDOT(int i_start_top, int i_end_top,
 			max_time_accessed_in_batch = std::max(
 					max_time_accessed_in_batch, endingCycle_memory);
 			uint64_t res2 = matrix->getOutputLogCSFSize();
-			std::cout << "the nnz are 1:" << matrix->getOutputLogNNZCount() << std::endl;
+			// std::cout << "the nnz are 1:" << matrix->getOutputLogNNZCount() << std::endl;
 			updateBWLogUnscheduled(res2, top_bw_logger, top_bytes_per_ns, LVL1_OUT_MID, true);
 		}
 	}
 	else {
 		uint64_t res2 = matrix->getOutputLogCSFSize();
-		std::cout << "the nnz are 2:" << matrix->getOutputLogNNZCount() << std::endl;
+		// std::cout << "the nnz are 2:" << matrix->getOutputLogNNZCount() << std::endl;
 		updateBWLogUnscheduled(res2, top_bw_logger, top_bytes_per_ns, LVL1_OUT_MID, true);
 	}
 
@@ -1156,28 +1156,28 @@ uint64_t Scheduler_8::updateBWLogUnscheduled(uint64_t action_bytes, float *bw_lo
 		switch (bw_type)
 		{
 			case LVL1_IN:
-				std::cout << " lv1 in " << action_bytes << std::endl; 
+				//std::cout << " lv1 in " << action_bytes << std::endl; 
 				break;
 			case LVL1_IN_MID:
-				std::cout << " lv1 mid in " << action_bytes  << " " << total_traffic << std::endl;
+				//std::cout << " lv1 mid in " << action_bytes  << " " << total_traffic << std::endl;
 				break;
 			case LVL1_IN_PRE_A:
-				std::cout << " lv1 pre in a " << action_bytes <<  " a: " << total_bw_breakdown[bw_type] << " " << total_traffic <<  std::endl;
+				//std::cout << " lv1 pre in a " << action_bytes <<  " a: " << total_bw_breakdown[bw_type] << " " << total_traffic <<  std::endl;
 				break;
 			case LVL1_IN_PRE_B:
-				std::cout << " lv1 pre in b " << action_bytes << " b: " << total_bw_breakdown[bw_type] << " " << total_traffic << std::endl;
+				//std::cout << " lv1 pre in b " << action_bytes << " b: " << total_bw_breakdown[bw_type] << " " << total_traffic << std::endl;
 				break;
 			case LVL1_OUT_MID:
-				std::cout << " lv1 pre out " << action_bytes << " pre out: " << total_bw_breakdown[bw_type] << " " << total_traffic << std::endl;
+				//std::cout << " lv1 pre out " << action_bytes << " pre out: " << total_bw_breakdown[bw_type] << " " << total_traffic << std::endl;
 				break;
 			case LVL2_IN:
-				std::cout << " lv2 in " << action_bytes << std::endl; 
+				//std::cout << " lv2 in " << action_bytes << std::endl; 
 				break;
 			case LVL1_OUT:
-				std::cout << " lv1 out " << action_bytes << std::endl;
+				//std::cout << " lv1 out " << action_bytes << std::endl;
 				break;
 			case LVL2_OUT:
-				std::cout << " lv2 out " << action_bytes << std::endl; 
+				//std::cout << " lv2 out " << action_bytes << std::endl; 
 				break;
 		}
 	}
@@ -1411,7 +1411,7 @@ void Scheduler_8::PreCalculateARowsSize(int j_start, int j_end,
 	CalcBLLBHorizontalSum(j_start, j_end,
 		k_start, k_end, b_llb_horizontalSum);
 
-	omp_set_num_threads(8);
+	omp_set_num_threads(4);
 	#pragma omp parallel for
 	for(int i_idx = 0; i_idx < o_tiled_rows; i_idx++){
 		// Find the size of the A row size needs to be fetched
@@ -1652,10 +1652,10 @@ void Scheduler_8::ExtractATopTile(int i_start_top, int &i_end_top,
 				j_start_top, j_end_top);
 			// std::cout << "\t\t\t\ti:" << i_start_top << "," << i_end_top << " k:" << k_start_top << "," << k_end_top << std::endl;
 		}
-		std::cout << "A size " << size_and_nnz[0] << " nnz " << size_and_nnz[1] << "  -> " << a_row_size << std::endl;
-		std::cout << "\t\t\ti:(" << i_start_top << ":" << i_end_top;
-		std::cout << "), j:(" << j_start_top << ":" << j_end_top;
-		std::cout << "), k:(" << k_start_top << ":" << k_end_top << std::endl;
+		////std::cout << "A size " << size_and_nnz[0] << " nnz " << size_and_nnz[1] << "  -> " << a_row_size << std::endl;
+		//std::cout << "\t\t\ti:(" << i_start_top << ":" << i_end_top;
+		//std::cout << "), j:(" << j_start_top << ":" << j_end_top;
+		//std::cout << "), k:(" << k_start_top << ":" << k_end_top << std::endl;
 	}
 	else if(params->getTilingMechanism() == tiling::t_dynamic){
 		// SoL variant of llb partitioning policy! It assumes a constant B percentage

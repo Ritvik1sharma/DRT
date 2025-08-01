@@ -1,0 +1,49 @@
+After stats
+After LLB_mem
+file name is /nobackupkiwi/rsharma3/Sparsity/DRT/DRT/data/geom.mtx
+tiling here for A 7343230 32
+tiling here for A 7343230 32
+Finished pretiling input A
+file name is /nobackupkiwi/rsharma3/Sparsity/DRT/DRT/data/geom.mtx
+Finished reading the matrix
+tiling here for A 7343230 32
+tiling here for A 7343230 32
+Finished pretiling input B
+pretiling output done 32
+Start Builing the Look-up Table!
+Copying information to the main hash table!
+Done!
+After new matrix
+Sanity check, middle bandwidth is now 2199.023193, 2199023255552.000000
+After scheduling
+I_top: 158, J_top: 158, K_top: 158
+Debug: top k 0 of 230
+B tile size 397480 nnz 13942
+ size and cap 794960 393216
+LLB Size is not Enough!							(This message should be shown only in static tiling)
+ size and cap 521976 393216
+LLB Size is not Enough!							(This message should be shown only in static tiling)
+B tile size 124496 nnz 4214
+Debug: top k 158 of 230
+B tile size 124752 nnz 4214
+ size and cap 522232 393216
+LLB Size is not Enough!							(This message should be shown only in static tiling)
+B tile size 43004 nnz 1426
+ Get run time 
+runtime: 0.000238, cycles: 238496, busy_cycles: 2611117
+Top DOT NoC:
+ total_top: 0.015938 GBs, a_top: 1379464, b_top: 689732, o_r_top: 5277424, o_w_top: 9766168
+Middle DOT NoC:
+ total_mid: 0.007941 GBs, a_mid: 1379464, b_mid: 1379464, o_r_mid: 0, o_w_mid: 5768016
+Top bandwidth logger: 17125381 bytes, 17134964 bytes, 0.015949 GBs
+ bandwidth breakdown total inp 0 total out 0 lvl2: 0 0
+ input breakdown  b: 689732, a: 1379464 mid lvl in: 0, out: 366824
+Middle bandwidth logger: 0 bytes, 0.000000 GBs
+BW logger a: 0, b: 0, o_r: 0, o_w: 0
+total_traffic 2436020, a_read 0, b read 0, o_read 0, o_write 0
+Model 0 report is based on skip model, changes with tile size
+Model 0: 0.000020
+Model 1: 0.000067
+A_csf: 689732, B_csf: 689732, O_csf: 4510920, O_COO: 3552832, bandwidth: 68.250000 GB/s
+Sorted PE intersection cycles:
+MEAN: 20399, STDEV 7040

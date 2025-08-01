@@ -1,4 +1,4 @@
-MKLROOT=~/intel/compilers_and_libraries_2020.1.217/linux/mkl
+MKLROOT=$(MKLPATH)
 #CXX=g++ -std=c++11 -fsanitize=address -Wall -g -fopenmp -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -m64 -I${MKLROOT}/include
 #CXX=g++ -std=c++11 -g -fopenmp -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -m64 -I${MKLROOT}/include
 CXX=g++ -std=c++11 -O3 -fopenmp -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -m64 -I${MKLROOT}/include
@@ -41,7 +41,7 @@ SpMM_ExTensor: $(OBJ_SPMM_EXTENSOR)
 SpMSpM_ExTensor: $(OBJ_SPMSPM_EXTENSOR)
 	$(CXX) $(FLAGS) -o $@ $^ $(CFLAGS)
 
-SpMSpM_TACTile: $(OBJ_SPMSPM_TACTILE)
+pMSpM_TACTile: $(OBJ_SPMSPM_TACTILE)
 	$(CXX) $(FLAGS) -o $@ $^ $(CFLAGS)
 
 SpMSpM_TACTile_test: $(OBJ_SPMSPM_TACTILE_TEST)

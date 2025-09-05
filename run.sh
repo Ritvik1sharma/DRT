@@ -9,8 +9,8 @@ while read line; do
     
     src/SpMSpM_TACTile_twoInp --inp1=${SUITESPARSE_PATH}"/"${line}".mtx" --inp2=${SUITESPARSE_PATH}"/"${line}".mtx" \
     	--tiledim=32 --staticdist=rr --intersect=parbi --tiling=dynamic > "logs_1_comp/"${line}"_dynamic.txt"
-    src/SpMSpM_TACTile_twoInp --inp1=${SUITESPARSE_PATH}"/"${line}".mtx" --inp2=${SUITESPARSE_PATH}"/"${line}".mtx" \
-    	--tiledim=32 --staticdist=rr --intersect=parbi --tiling=static > "logs_1_comp/"${line}"_static.txt"
+    src/SpMSpM_TACTile_twoInp --inp1=${SUITESPARSE_PATH}"/"${line}".mtx" --inp2=${SUITESPARSE_PATH}"/"${line}"_shifted.mtx" \
+    	--tiledim=32 --staticdist=rr --intersect=parbi --tiling=dynamic > "logs_1_comp/"${line}"_dynamic_shifted.txt"
 done <$1
 
 

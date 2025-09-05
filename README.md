@@ -1,4 +1,5 @@
 # DRT
+First follow the isntructions below to setup and run DRT.
 Simulators for dynamic reflexive tiling and several accelerators.
 
 Setup:
@@ -39,40 +40,10 @@ Setup:
 
 5. If you are using slurm, you can use the python scripts in the `run_...` directories to launch similar runs as those found in the paper. Please replace the DATADIR, OUTDIR, and EXECDIR with your local file paths (to your dataset directory of mtx files, the output directory where you want results, and the directory of your executable, respectively). You can also use the `slurmtest.py` files to see example launch commands and configurations. 
 
-*** 
-The simulator spits out text similar to the following (we only include relevant output below):
-```
-runtime: 0.002372, cycles: 2371708, busy_cycles: 110825158
-Top DOT NoC:
- total_top: 0.159724 GBs, a_top: 53040696, b_top: 30309984, o_r_top: 0, o_w_top: 88151644
-Middle DOT NoC:
- total_mid: 0.254072 GBs, a_mid: 53040696, b_mid: 134560180, o_r_mid: 0, o_w_mid: 85207216
-...
-A_csf: 30309984, B_csf: 30309984, O_csf: 88151644, O_COO: 62339776, bandwidth: 68.250000 GB/s
-```
-- runtime: 0.002372, cycles: 2371708, busy_cycles: 110825158 
-    - runtime in seconds of the accelerator on that workload 
-    - cycles: # of cycles it would take the accelerator to execute 
-    - busy cycles: # of total cycles across all PEs (that is, the cycles of each PE added up) 
-- total_top: total number of GB transferred to and from the DRAM (in GB)
-    - a_top: total number of bytes transferred for the $A$ matrix  (in DRAM)
-    - b_top: total number of bytes transferred for the $B$ matrix (in DRAM)
-    - o_r_top: total number of output tensor bytes read from the DRAM
-    - o_w_top: total number of output tensor bytes written to the DRAM
-- total_mid: total number of GB transferred to and from the LLB (in GB)
-    - a_mid: total number of bytes transferred for the $A$ matrix (in LLB)
-    - b_mid: total number of bytes transferred for the $B$ matrix (in LLB)
-    - o_r_mid: total number of bytes read in the LLB for the output tensor
-    - o_w_mid: total number of bytes written in the LLB for the output tensor
-- A_csf, B_csf, O_csf, O_COO: the size, in bytes, of each of the tensors for that particular data format. 
-- bandwidth: the assumed DRAM bandwidth in GB/s
-***
 
-`src`:
-This contains the source files for the simulator.
-- `scheduler_7.cpp`: the main code for ExTensor modeling
-- `scheduler_8.cpp`: the main code for TACTile modeling
-- `scheduler_8_diagonal_drt.cpp`: source code for a diagonal variant of DRT in TACTile
-- `scheduler_9.cpp`: idealized model of OuterSPACE (no tiling)
-- `scheduler_9_drt.cpp`: idealized model of OuterSPACE + DRT
-- `llb_mem.cpp`: tracking memory transfers to and form the LLB
+
+The tests can be run with run.sh that will generate logs for A * A and A * A^{T}' where A' is the matrix A shifted by 1 element.
+Running result\_parser.py will extract the traffic logged by the DRT simulator.
+*** 
+
+
